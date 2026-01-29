@@ -119,14 +119,13 @@ if uploaded_image is not None:
     else:
         index_pos = recommend(feature_list, features)
         
-        # 1. Get the raw path from your pickle
+        # Get the raw path from pickle
         raw_filename = filenames[index_pos]
         
-        # 2. FIX: Convert Windows backslashes to Linux forward slashes
-        # and ensure no leading slashes cause issues
+        # Convert Windows backslashes to Linux forward slashes
         normalized_path = raw_filename.replace('\\', '/')
         
-        # 3. Clean up the actor name for the header
+        # Clean up the actor name for the header
         # This takes 'data/salman_khan/img.jpg' -> 'salman khan'
         path_parts = normalized_path.split('/')
         if len(path_parts) >= 2:

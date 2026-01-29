@@ -1,30 +1,38 @@
 import sys
 import types
 
-# --- MONKEY PATCH START ---
-# We are manually creating the 'keras.utils.data_utils' and 'keras.engine.topology' 
-# modules that the old keras-vggface library is looking for.
-
+# --- ULTIMATE MONKEY PATCH START ---
 import keras
+
+# 1. Fix the basic layer_utils and data_utils locations
 import keras.src.utils.layer_utils as layer_utils
 import keras.src.utils.data_utils as data_utils
 
-# Create dummy modules to satisfy imports
+# 2. Create the 'keras.utils.data_utils' module
 if 'keras.utils.data_utils' not in sys.modules:
-    utils_mod = types.ModuleType('keras.utils.data_utils')
-    utils_mod.get_file = data_utils.get_file
-    sys.modules['keras.utils.data_utils'] = utils_mod
+    utils_data_mod = types.ModuleType('keras.utils.data_utils')
+    utils_data_mod.get_file = data_utils.get_file
+    sys.modules['keras.utils.data_utils'] = utils_data_mod
 
+# 3. Create the 'keras.utils.layer_utils' module (This fixes your current error)
+if 'keras.utils.layer_utils' not in sys.modules:
+    utils_layer_mod = types.ModuleType('keras.utils.layer_utils')
+    utils_layer_mod.get_source_inputs = layer_utils.get_source_inputs
+    sys.modules['keras.utils.layer_utils'] = utils_layer_mod
+
+# 4. Create the 'keras.engine.topology' module
 if 'keras.engine.topology' not in sys.modules:
     topo_mod = types.ModuleType('keras.engine.topology')
     topo_mod.get_source_inputs = layer_utils.get_source_inputs
     sys.modules['keras.engine.topology'] = topo_mod
 
-# Map layer_utils to where the library expects it
+# 5. Ensure the top-level keras.utils has what it needs
 if not hasattr(keras.utils, 'layer_utils'):
     keras.utils.layer_utils = layer_utils
+if not hasattr(keras.utils, 'get_file'):
+    keras.utils.get_file = data_utils.get_file
 
-# --- MONKEY PATCH END ---
+# --- ULTIMATE MONKEY PATCH END ---
 
 import streamlit as st
 import os

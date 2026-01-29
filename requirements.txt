@@ -8,4 +8,3 @@ keras_applications
 scikit-learn
 Pillow
 numpy<2.0.0
-keras.utils.layer_utils

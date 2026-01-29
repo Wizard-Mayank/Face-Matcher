@@ -1,0 +1,9 @@
+streamlit
+tensorflow-cpu
+opencv-python-headless
+mtcnn
+keras-vggface @ git+https://github.com/rcmalli/keras-vggface.git
+keras_applications
+scikit-learn
+Pillow
+numpy

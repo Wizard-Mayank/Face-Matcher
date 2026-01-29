@@ -1,0 +1,98 @@
+import streamlit as st
+import os
+import cv2
+import pickle
+import numpy as np
+from PIL import Image
+from mtcnn import MTCNN
+from keras_vggface.vggface import VGGFace
+from keras_vggface.utils import preprocess_input
+from sklearn.metrics.pairwise import cosine_similarity
+
+# configuration
+st.set_page_config(page_title="Bollywood Lookalike", layout="wide")
+
+# upload directory
+if not os.path.exists('uploads'):
+    os.makedirs('uploads')
+
+# --- LOAD MODELS & DATA ---
+@st.cache_resource
+def load_models():
+    detector = MTCNN()
+    model = VGGFace(model='resnet50', include_top=False, input_shape=(224, 224, 3), pooling='avg')
+    return detector, model
+
+@st.cache_data
+def load_embeddings():
+    feature_list = np.array(pickle.load(open('embedding.pkl', 'rb')))
+    filenames = pickle.load(open('filenames.pkl', 'rb'))
+    return feature_list, filenames
+
+detector, model = load_models()
+feature_list, filenames = load_embeddings()
+
+# --- HELPER FUNCTIONS ---
+def extract_features(img_path, model, detector):
+    img = cv2.imread(img_path)
+    # Convert BGR to RGB for MTCNN
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    results = detector.detect_faces(img_rgb)
+
+    if not results:
+        return None
+
+    x, y, width, height = results[0]['box']
+    # Handle potential negative indexing from detector
+    x, y = max(0, x), max(0, y)
+    face = img_rgb[y:y + height, x:x + width]
+
+    # Preprocessing
+    image = Image.fromarray(face)
+    image = image.resize((224, 224))
+    face_array = np.asarray(image).astype('float32')
+    expanded_img = np.expand_dims(face_array, axis=0)
+    preprocessed_img = preprocess_input(expanded_img)
+    
+    return model.predict(preprocessed_img).flatten()
+
+def recommend(feature_list, features):
+    similarity = cosine_similarity(features.reshape(1, -1), feature_list)
+    index_pos = np.argmax(similarity)
+    return index_pos
+
+# --- UI INTERFACE ---
+st.title('Which Bollywood Celebrity Are You?')
+
+uploaded_image = st.file_uploader('Choose an image...', type=['jpg', 'png', 'jpeg'])
+
+if uploaded_image is not None:
+    # Save the file
+    temp_path = os.path.join('uploads', uploaded_image.name)
+    with open(temp_path, 'wb') as f:
+        f.write(uploaded_image.getbuffer())
+
+    # Display & Process
+    display_image = Image.open(uploaded_image)
+    
+    with st.spinner('Analyzing face...'):
+        features = extract_features(temp_path, model, detector)
+
+    if features is None:
+        st.error("No face detected! Please try another photo with a clear view of your face.")
+    else:
+        index_pos = recommend(feature_list, features)
+        
+        # Clean up filename for display
+        raw_filename = filenames[index_pos]
+        # Robust path handling for both Windows and Linux
+        predicted_actor = os.path.basename(os.path.dirname(raw_filename)).replace('_', ' ')
+
+        # Display Results
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader('Your Photo')
+            st.image(display_image, width=300)
+        with col2:
+            st.subheader(f"You look like: {predicted_actor.title()}")
+            st.image(raw_filename, width=300)

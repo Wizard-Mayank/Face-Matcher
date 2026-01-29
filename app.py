@@ -1,16 +1,30 @@
-# MONKEY PATCH: Fix keras_vggface imports for modern Keras/TensorFlow
-import keras
-if not hasattr(keras, 'utils'):
-    import keras.src.utils as utils
-    keras.utils = utils
+import sys
+import types
 
-# Some versions of keras-vggface look for these specifically
-try:
-    from keras.utils import layer_utils
-except ImportError:
-    from keras.src.utils import layer_utils
-    import keras.utils
+# --- MONKEY PATCH START ---
+# We are manually creating the 'keras.utils.data_utils' and 'keras.engine.topology' 
+# modules that the old keras-vggface library is looking for.
+
+import keras
+import keras.src.utils.layer_utils as layer_utils
+import keras.src.utils.data_utils as data_utils
+
+# Create dummy modules to satisfy imports
+if 'keras.utils.data_utils' not in sys.modules:
+    utils_mod = types.ModuleType('keras.utils.data_utils')
+    utils_mod.get_file = data_utils.get_file
+    sys.modules['keras.utils.data_utils'] = utils_mod
+
+if 'keras.engine.topology' not in sys.modules:
+    topo_mod = types.ModuleType('keras.engine.topology')
+    topo_mod.get_source_inputs = layer_utils.get_source_inputs
+    sys.modules['keras.engine.topology'] = topo_mod
+
+# Map layer_utils to where the library expects it
+if not hasattr(keras.utils, 'layer_utils'):
     keras.utils.layer_utils = layer_utils
+
+# --- MONKEY PATCH END ---
 
 import streamlit as st
 import os

@@ -119,10 +119,20 @@ if uploaded_image is not None:
     else:
         index_pos = recommend(feature_list, features)
         
-        # Clean up filename for display
+        # 1. Get the raw path from your pickle
         raw_filename = filenames[index_pos]
-        # Robust path handling for both Windows and Linux
-        predicted_actor = os.path.basename(os.path.dirname(raw_filename)).replace('_', ' ')
+        
+        # 2. FIX: Convert Windows backslashes to Linux forward slashes
+        # and ensure no leading slashes cause issues
+        normalized_path = raw_filename.replace('\\', '/')
+        
+        # 3. Clean up the actor name for the header
+        # This takes 'data/salman_khan/img.jpg' -> 'salman khan'
+        path_parts = normalized_path.split('/')
+        if len(path_parts) >= 2:
+            predicted_actor = path_parts[-2].replace('_', ' ')
+        else:
+            predicted_actor = "Celebrity"
 
         # Display Results
         col1, col2 = st.columns(2)
@@ -131,4 +141,9 @@ if uploaded_image is not None:
             st.image(display_image, width=300)
         with col2:
             st.subheader(f"You look like: {predicted_actor.title()}")
-            st.image(raw_filename, width=300)
+            try:
+                # Use the normalized path here
+                st.image(normalized_path, width=300)
+            except Exception as e:
+                st.error(f"Could not load celebrity image at: {normalized_path}")
+                st.write("Not uploaded to GitHub!")

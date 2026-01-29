@@ -1,3 +1,17 @@
+# MONKEY PATCH: Fix keras_vggface imports for modern Keras/TensorFlow
+import keras
+if not hasattr(keras, 'utils'):
+    import keras.src.utils as utils
+    keras.utils = utils
+
+# Some versions of keras-vggface look for these specifically
+try:
+    from keras.utils import layer_utils
+except ImportError:
+    from keras.src.utils import layer_utils
+    import keras.utils
+    keras.utils.layer_utils = layer_utils
+
 import streamlit as st
 import os
 import cv2
